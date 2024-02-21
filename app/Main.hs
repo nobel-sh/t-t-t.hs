@@ -7,6 +7,8 @@ import State
 import Board
 import Network.Socket
 import Game
+import Data.List (find)
+import System.Environment
 
 runHostGame :: GameState -> Socket -> IO ()
 runHostGame game sock= do
@@ -28,16 +30,30 @@ runClientGame game sock= do
       let newGame = applyModification game inputs
       runClientGame newGame sock
 
-clientMain :: IO ()
-clientMain = do
-  sock <- initClient 4000
+clientMain :: String -> IO ()
+clientMain port = do
+  sock <- initClient port
   let game = initializeState emptyBoard Cross
   runClientGame game sock
 
-hostMain ::  IO ()
-hostMain = do
-  sock <- initServer 4000
+hostMain :: String -> IO ()
+hostMain port = do
+  sock <- initServer port
   let game = initializeState emptyBoard Cross
   runHostGame game sock
 
-main = hostMain
+isHost ::  [String] -> Bool
+isHost args = "-H" `elem` args
+
+getPortArg :: [String] -> Maybe String
+getPortArg args = findPortArg args
+  where
+    findPortArg = fmap snd . find ((== "-P") . fst) . zip args . tail
+
+main :: IO ()
+main = do
+    args <- getArgs
+    case getPortArg args of
+      Nothing -> do
+        putStrLn "Please enter a valid port"
+      Just p  -> if isHost args then hostMain p else clientMain p

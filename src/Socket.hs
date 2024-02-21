@@ -17,7 +17,7 @@ import qualified Data.Text as T
 import System.IO
 import Control.Exception
 
-initServer :: Int -> IO Socket
+initServer :: String -> IO Socket
 initServer port = withSocketsDo $ do
   addr <- resolve port
   sock <- open addr
@@ -28,10 +28,10 @@ initServer port = withSocketsDo $ do
   return clientSock
 
 
-resolve :: Int -> IO AddrInfo
+resolve :: String -> IO AddrInfo
 resolve port = do
     let hints = defaultHints { addrFlags = [AI_PASSIVE], addrSocketType = Stream }
-    addr:_ <- getAddrInfo (Just hints) Nothing (Just $ show port)
+    addr:_ <- getAddrInfo (Just hints) Nothing (Just port)
     return addr
 
 open :: AddrInfo -> IO Socket
@@ -42,13 +42,15 @@ open addr = do
     return sock
 
 
-initClient :: Int -> IO Socket
+initClient :: String -> IO Socket
 initClient port = withSocketsDo $ do
-  addrInfo <- getAddrInfo Nothing (Just "127.0.0.1") (Just $ show port)
+  addrInfo <- getAddrInfo Nothing (Just "127.0.0.1") (Just port)
   let serverAddr = head addrInfo
   sock <- socket (addrFamily serverAddr) Stream defaultProtocol
   catch(connect sock (addrAddress serverAddr))
-       (\e -> putStrLn $ "Error: " ++ show (e :: SomeException))
+       (\e -> do
+            putStrLn "Error: Could not connect to server"
+            throwIO (e :: IOException))
   return sock
 
 encodeBS :: String -> BS.ByteString

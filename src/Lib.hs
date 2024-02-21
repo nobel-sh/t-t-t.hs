@@ -1,5 +1,2 @@
-module Lib(
-          ) where
+module Lib where
 
-import Board
-import State

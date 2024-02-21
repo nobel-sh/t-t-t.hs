@@ -1,11 +1,12 @@
 module State
     (
-      GameState,
+      GameState(currBoard, currTurn),
       initializeState,
       printState,
       modifyState,
       applyModification,
       isEndState,
+      nextTurn,
     ) where
 import Board
 

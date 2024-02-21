@@ -1,47 +1,43 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main (main) where
 
-import Data.Char(digitToInt, isDigit)
-import System.Exit(exitWith, ExitCode(..))
+import Socket
 import State
 import Board
+import Network.Socket
+import Game
 
-getInput :: IO (Int,Int)
-getInput = do
-  putStrLn "Input the cell cordinates e.g. 1 2"
-  input <- getLine
-  let cordinates = map digitToInt (filter isDigit input)
-  case cordinates of
-    [row, col] -> return (row,col)
-    _          -> do
-        putStrLn "Invalid Input. Please enter two integers."
-        getInput
-
-printGame :: GameState -> IO ()
-printGame game = do
-  putStr "\ESC[2J"              -- Clear the Screen
-  putStrLn "\tGame State is:\n"
-  printState game
-  putStrLn "\n\n"
-
-runGame :: GameState -> IO ()
-runGame game = do
+runHostGame :: GameState -> Socket -> IO ()
+runHostGame game sock= do
   printGame game
   case isEndState game of
     Just endCell -> handleEndGame endCell
     Nothing      -> do
-      inputs <- getInput
-      runGame $ applyModification game inputs
+      inputs  <- getInput (currTurn game) sock
+      let newGame = applyModification game inputs
+      runHostGame newGame sock
 
-handleEndGame :: Cell -> IO ()
-handleEndGame endingCell =
-  case endingCell of
-    Empty -> do
-      putStrLn "No more possible moves"
-      exitWith ExitSuccess
-    _ -> do
-      putStrLn $ "Winner: " ++ show endingCell
-      exitWith ExitSuccess
+runClientGame :: GameState -> Socket -> IO ()
+runClientGame game sock= do
+  printGame game
+  case isEndState game of
+    Just endCell -> handleEndGame endCell
+    Nothing      -> do
+      inputs <- getInput (nextTurn $ currTurn game) sock
+      let newGame = applyModification game inputs
+      runClientGame newGame sock
 
-main ::  IO ()
-main = do
-  runGame $ initializeState emptyBoard Cross
+clientMain :: IO ()
+clientMain = do
+  sock <- initClient 4000
+  let game = initializeState emptyBoard Cross
+  runClientGame game sock
+
+hostMain ::  IO ()
+hostMain = do
+  sock <- initServer 4000
+  let game = initializeState emptyBoard Cross
+  runHostGame game sock
+
+main = hostMain
